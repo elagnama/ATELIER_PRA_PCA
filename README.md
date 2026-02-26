@@ -398,13 +398,66 @@ Difficulté : Moyenne (~2 heures)
 * last_backup_file : nom du dernier backup présent dans /backup
 * backup_age_seconds : âge du dernier backup
 
-*..**Déposez ici une copie d'écran** de votre réussite..*
+![alt text](image.png)
 
 ---------------------------------------------------
 ### **Atelier 2 : Choisir notre point de restauration**  
 Aujourd’hui nous restaurobs “le dernier backup”. Nous souhaitons **ajouter la capacité de choisir un point de restauration**.
 
-*..Décrir ici votre procédure de restauration (votre runbook)..*  
+**Procédure de restauration (runbook) :**
+1. **Lister les backups disponibles**
+   - Ouvrir un shell dans un pod ou utiliser `kubectl -n pra run debug-backup` comme décrit plus haut.
+   - Exécuter `ls -1 /backup | sort` pour voir tous les fichiers `app-<timestamp>.db` rangés par ordre chronologique.
+   - Notez le nom du fichier correspondant au point de restauration désiré (par exemple `app-1772098321.db`).
+
+2. **Suspendre le cron de sauvegarde** afin d'éviter qu'un job ne copie une nouvelle version pendant la restauration :
+   ```bash
+   kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":true}}'
+   ```
+
+3. **Arrêter l'application** (optionnel mais recommandé) :
+   ```bash
+   kubectl -n pra scale deployment flask --replicas=0
+   ```
+   Cela garantit qu'aucune écriture n'aura lieu pendant l'opération.
+
+4. **Préparer le volume de données**
+   - Si le PVC `pra-data` existe déjà (vide ou non), vous pouvez le supprimer et le recréer en appliquant les manifests :
+     ```bash
+     kubectl -n pra delete pvc pra-data
+     kubectl apply -f k8s/11-pvc-data.yaml
+     kubectl apply -f k8s/20-deployment.yaml  # pour recréer le pod si nécessaire
+     ```
+   - Alternativement, vous pouvez monter le PVC dans un pod de debug et purger manuellement `/data/app.db`.
+
+5. **Copier le backup choisi dans le PVC de données**
+   - Créer un job de restauration ad‑hoc en remplaçant la variable dans `pra/50-job-restore.yaml` ou en lançant la commande manuelle :
+     ```bash
+     kubectl -n pra run restore-chosen --restart=Never --rm -it --image=alpine -- sh -c \
+       "cp /backup/app-1772098321.db /data/app.db" \
+       -v pra-data:/data -v pra-backup:/backup
+     ```
+     (adaptez le nom du fichier selon votre sélection)
+   - Si vous préférez modifier `pra/50-job-restore.yaml`, mettez le nom dans la ligne `LATEST=$(ls -t /backup/*.db | head -1)` et remplacez la logique par `cp /backup/app-1772098321.db /data/app.db`.
+
+6. **Vérifier la restauration**
+   - Relancer l'application si elle a été arrêtée :
+     ```bash
+     kubectl -n pra scale deployment flask --replicas=1
+     ```
+   - Attendre que le pod soit prêt (`kubectl -n pra get pods`).
+   - Tester avec `/count` et `/consultation` pour s'assurer que les données correspondent au point de restauration choisi.
+
+7. **Redémarrer le cron de sauvegarde** :
+   ```bash
+   kubectl -n pra patch cronjob sqlite-backup -p '{"spec":{"suspend":false}}'
+   ```
+
+8. **(Optionnel) Vérifier le backup actuel** pour confirmer que la prochaine sauvegarde s'exécute correctement et qu'elle reprend à partir de la base restaurée.
+
+> 💡 *Conseil* : conservez un log de la restauration (date, nom du fichier, raison) pour l'audit et la traçabilité.
+
+Cette procédure donne la souplesse de choisir n’importe quel point dans le temps et s’applique dans tous les environnements où les backups sont accessibles.  
   
 ---------------------------------------------------
 Evaluation

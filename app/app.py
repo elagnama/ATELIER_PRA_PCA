@@ -115,11 +115,11 @@ def status():
             backup_mtime = os.path.getmtime(backup_path)
             backup_age_seconds = int(time.time() - backup_mtime)
 
-    return jsonify(
-        count=event_count,
-        last_backup_file=last_backup_file,
-        backup_age_seconds=backup_age_seconds
-    )
+    return jsonify({
+        "count": event_count,
+        "last_backup_file": last_backup_file,
+        "backup_age_seconds": backup_age_seconds    
+    })
 
 # ---------- Main ----------
 if __name__ == "__main__":
