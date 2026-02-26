@@ -332,16 +332,16 @@ Voici une architecture PRA/PCA **production-ready** qui adresse les limitations 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│              STOCKAGE EXTERNALISÉ MULTI-RÉGION                       │
-│                                                                      │
+│              STOCKAGE EXTERNALISÉ MULTI-RÉGION                      │
+│                                                                     │
 │  AWS S3 / Google Cloud Storage / Azure Blob Storage                 │
 │  ┌────────────────────────────────────────────────────────────────┐ │
 │  │  Backup Bucket (Versioned + Encrypted + Immutable)             │ │
 │  │  . Retention: 90 jours                                         │ │
 │  │  . Encryption: AES-256 (KMS)                                   │ │
-│  │  . Replication: Cross-region (géographique)                   │ │
+│  │  . Replication: Cross-region (géographique)                    │ │
 │  │  . Backup chiffré toutes les minutes                           │ │
-│  │  . Snapshots: Horaires + Quotidiens + Hebdomadaires           │ │
+│  │  . Snapshots: Horaires + Quotidiens + Hebdomadaires            │ │
 │  └────────────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────┘
 ```
